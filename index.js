@@ -1,310 +1,248 @@
-// TASK: import helper functions from utils
-// TASK: import initialData
-import * as Helpers from './utils/helpers.js';
-import {initialData} from "./initialData"
-// DONE :)
+import { getTasks, createNewTask, patchTask, putTask, deleteTask } from './utils/taskFunctions.js';
+import { initialData } from "./initialData.js";
 
-/*************************************************************************************************************************************************
- * FIX BUGS!!!
- * **********************************************************************************************************************************************/
-
-// Function checks if local storage already has data, if not it loads initialData to localStorage
+// Initialize data in localStorage
 function initializeData() {
-  if (!localStorage.getItem('tasks')) {
-    localStorage.setItem('tasks', JSON.stringify(initialData)); 
-    localStorage.setItem('showSideBar', 'true')
-  } else {
-    console.log('Data already exists in localStorage');
-  }
+    if (!localStorage.getItem('tasks')) {
+        localStorage.setItem('tasks', JSON.stringify(initialData));
+        localStorage.setItem('showSideBar', 'true');
+        console.log('Initial data loaded into localStorage');
+    } else {
+        console.log('Data already exists in localStorage');
+    }
 }
 
-// TASK: Get elements from the DOM
+// Get DOM elements
 const elements = {
-  sideBar: document.getElementById('side-bar-div'),
-    logo: document.getElementById('logo'),
-    boardsNavLinks: document.getElementById('boards-nav-links-div'),
-    headlineSidepanel: document.getElementById('headline-sidepanel'),
-    toggleDiv: document.querySelector('.toggle-div'),
-    iconDark: document.getElementById('icon-dark'),
-    switch: document.getElementById('switch'),
-    labelCheckboxTheme: document.getElementById('label-checkbox-theme'),
-    iconLight: document.getElementById('icon-light'),
-    hideSideBarBtn: document.getElementById('hide-side-bar-btn'),
+    createNewTaskBtn: document.getElementById('create-task-btn'),
+    filterDiv: document.getElementById('filterDiv'),
+    sideBarDiv: document.getElementById('side-bar-div'),
     showSideBarBtn: document.getElementById('show-side-bar-btn'),
-    layout: document.getElementById('layout'),
+    hideSideBarBtn: document.getElementById('hide-side-bar-btn'),
     header: document.getElementById('header'),
-    headerBoardName: document.getElementById('header-board-name'),
-    dropdownBtn: document.getElementById('dropdownBtn'),
-    dropDownIcon: document.getElementById('dropDownIcon'),
     addNewTaskBtn: document.getElementById('add-new-task-btn'),
     editBoardBtn: document.getElementById('edit-board-btn'),
     editBoardDiv: document.getElementById('editBoardDiv'),
     deleteBoardBtn: document.getElementById('deleteBoardBtn'),
-    todoHeadDiv: document.getElementById('todo-head-div'),
-    toDoText: document.getElementById('toDoText'),
-    doingHeadDiv: document.getElementById('doing-head-div'),
-    doingText: document.getElementById('doingText'),
-    doneHeadDiv: document.getElementById('done-head-div'),
-    doneText: document.getElementById('doneText'),
     newTaskModalWindow: document.getElementById('new-task-modal-window'),
-    titleInput: document.getElementById('title-input'),
-    descInput: document.getElementById('desc-input'),
-    selectStatus: document.getElementById('select-status'),
-    createTaskBtn: document.getElementById('create-task-btn'),
     cancelAddTaskBtn: document.getElementById('cancel-add-task-btn'),
     editTaskForm: document.getElementById('edit-task-form'),
-    editTaskTitleInput: document.getElementById('edit-task-title-input'),
-    editTaskDescInput: document.getElementById('edit-task-desc-input'),
-    editSelectStatus: document.getElementById('edit-select-status'),
     saveTaskChangesBtn: document.getElementById('save-task-changes-btn'),
     cancelEditBtn: document.getElementById('cancel-edit-btn'),
     deleteTaskBtn: document.getElementById('delete-task-btn'),
-    filterDiv: document.getElementById('filterDiv')
-}
+    todoHeadDiv: document.getElementById('todo-head-div'),
+    doingHeadDiv: document.getElementById('doing-head-div'),
+    doneHeadDiv: document.getElementById('done-head-div'),
+    headerBoardName: document.getElementById('header-board-name'),
+    dropDownIcon: document.getElementById('dropDownIcon'),
+    threeDotsIcon: document.getElementById('three-dots-icon'),
+    todoDot: document.getElementById('todo-dot'),
+    doingDot: document.getElementById('doing-dot'),
+    doneDot: document.getElementById('done-dot'),
+    modalTitleInput: document.getElementById('title-input'),
+    modalDescInput: document.getElementById('desc-input'),
+    selectStatus: document.getElementById('select-status'),
+    editSelectStatus: document.getElementById('edit-select-status'),
+    editTaskTitleInput: document.getElementById('edit-task-title-input'),
+    editTaskDescInput: document.getElementById('edit-task-desc-input'),
+    columnDivs: document.querySelectorAll('.column-div')
+};
 
-let activeBoard = ""
+let activeBoard = 'Launch Career'; // Default board name
 
-// Extracts unique board names from tasks
-// TASK: FIX BUGS
-
-//DONE
-function fetchAndDisplayBoardsAndTasks() {
-  const tasks = getTasks();
-  const boards = [...new Set(tasks.map(task => task.board).filter(Boolean))];
-  displayBoards(boards);
-  if (boards.length > 0) {
-    const localStorageBoard = JSON.parse(localStorage.getItem("activeBoard"))
-    activeBoard = localStorageBoard ? localStorageBoard :  boards[0]; 
-    elements.headerBoardName.textContent = activeBoard
-    styleActiveBoard(activeBoard)
-    refreshTasksUI();
-  }
-}
-
-// Creates different boards in the DOM
-// TASK: Fix Bugs
-
-//DONE
-function displayBoards(boards) {
-  const boardsContainer = document.getElementById("boards-nav-links-div");
-  boardsContainer.innerHTML = ''; // Clears the container
-  boards.forEach(board => {
-    const boardElement = document.createElement("button");
-    boardElement.textContent = board;
-    boardElement.classList.add("board-btn");
-    boardElement.addEventListener('click', () => {  
-      elements.headerBoardName.textContent = board;
-      filterAndDisplayTasksByBoard(board);
-      activeBoard = board //assigns active board
-      localStorage.setItem("activeBoard", JSON.stringify(activeBoard))
-      styleActiveBoard(activeBoard)
-    });
-    boardsContainer.appendChild(boardElement);
-  });
-
-}
-
-// Filters tasks corresponding to the board name and displays them on the DOM.
-// TASK: Fix Bugs
-
-//DONE
+// Function to filter and display tasks based on the board name
 function filterAndDisplayTasksByBoard(boardName) {
-  const tasks = getTasks(); // Fetch tasks from a simulated local storage function
-  const filteredTasks = tasks.filter(task => task.board === boardName);
+    const tasks = getTasks();
+    const filteredTasks = tasks.filter(task => task.board === boardName);
 
-  // Ensure the column titles are set outside of this function or correctly initialized before this function runs
+    elements.columnDivs.forEach(column => {
+        const status = column.getAttribute("data-status");
 
-  elements.columnDivs.forEach(column => {
-    const status = column.getAttribute("data-status");
-    // Reset column content while preserving the column title
-    column.innerHTML = `<div class="column-head-div">
-                          <span class="dot" id="${status}-dot"></span>
-                          <h4 class="columnHeader">${status.toUpperCase()}</h4>
-                        </div>`;
+        column.innerHTML = `
+            <div class="column-head-div">
+                <span class="dot" id="${status}-dot"></span>
+                <h4 class="columnHeader">${status.toUpperCase()}</h4>
+            </div>
+        `;
 
-    const tasksContainer = document.createElement("div");
-    column.appendChild(tasksContainer);
+        const tasksContainer = document.createElement("div");
+        tasksContainer.className = 'tasks-container';
+        column.appendChild(tasksContainer);
 
-    filteredTasks.filter(task => task.status = status).forEach(task => { 
-      const taskElement = document.createElement("div");
-      taskElement.classList.add("task-div");
-      taskElement.textContent = task.title;
-      taskElement.setAttribute('data-task-id', task.id);
+        filteredTasks.filter(task => task.status === status).forEach(task => {
+            const taskElement = document.createElement("div");
+            taskElement.classList.add("task-div");
+            taskElement.textContent = task.title;
+            taskElement.setAttribute('data-task-id', task.id);
 
-      // Listen for a click event on each task and open a modal
-      taskElement.addEventListener( "click" , () => { 
-        openEditTaskModal(task);
-      });
+            taskElement.addEventListener("click", () => {
+                openEditTaskModal(task);
+            });
 
-      tasksContainer.appendChild(taskElement);
+            tasksContainer.appendChild(taskElement);
+        });
     });
-  });
 }
-
 
 function refreshTasksUI() {
-  filterAndDisplayTasksByBoard(activeBoard);
+    filterAndDisplayTasksByBoard(activeBoard);
 }
 
-// Styles the active board by adding an active class
-// TASK: Fix Bugs
-
-//DONE
 function styleActiveBoard(boardName) {
-  document.querySelectorAll('.board-btn').foreach(btn => { 
-    
-    if(btn.textContent === boardName) {
-      btn.classList.add('active') 
-    }
-    else {
-      btn.classList.remove('active'); 
-    }
-  });
+    document.querySelectorAll('.board-btn').forEach(btn => {
+        if (btn.textContent === boardName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    console.log(`Styled board "${boardName}" as active`);
 }
-
 
 function addTaskToUI(task) {
-  const column = document.querySelector(`.column-div[data-status="${task.status}"]`);
-  if (!column) {
-    console.error(`Column not found for status: ${task.status}`);
-    return;
-  }
+    const column = document.querySelector(`.column-div[data-status="${task.status}"]`);
+    if (!column) {
+        console.error(`Column not found for status: ${task.status}`);
+        return;
+    }
 
-  let tasksContainer = column.querySelector('.tasks-container');
-  if (!tasksContainer) {
-    console.warn(`Tasks container not found for status: ${task.status}, creating one.`);
-    tasksContainer = document.createElement('div');
-    tasksContainer.className = 'tasks-container';
-    column.appendChild(tasksContainer);
-  }
+    let tasksContainer = column.querySelector('.tasks-container');
+    if (!tasksContainer) {
+        console.warn(`Tasks container not found for status: ${task.status}, creating one.`);
+        tasksContainer = document.createElement('div');
+        tasksContainer.className = 'tasks-container';
+        column.appendChild(tasksContainer);
+    }
 
-  const taskElement = document.createElement('div');
-  taskElement.className = 'task-div';
-  taskElement.textContent = task.title; // Modify as needed
-  taskElement.setAttribute('data-task-id', task.id);
-  
-  tasksContainer.appendChild(taskElement); 
+    const taskElement = document.createElement('div');
+    taskElement.className = 'task-div';
+    taskElement.textContent = task.title;
+    taskElement.setAttribute('data-task-id', task.id);
+
+    tasksContainer.appendChild(taskElement);
+    console.log(`Added task "${task.title}" to UI`);
 }
-
-//next bug fix when log back
 
 function setupEventListeners() {
-  // Cancel editing task event listener
-  const cancelEditBtn = document.getElementById('cancel-edit-btn');
-  cancelEditBtn.click() => toggleModal(false, elements.editTaskModal));
+    elements.cancelEditBtn.addEventListener('click', () => {
+        toggleModal(false, elements.editTaskModalWindow);
+    });
 
-  // Cancel adding new task event listener
-  const cancelAddTaskBtn = document.getElementById('cancel-add-task-btn');
-  cancelAddTaskBtn.addEventListener('click', () => {
-    toggleModal(false);
-    elements.filterDiv.style.display = 'none'; // Also hide the filter overlay
-  });
+    elements.cancelAddTaskBtn.addEventListener('click', () => {
+        toggleModal(false, elements.newTaskModalWindow);
+        elements.filterDiv.style.display = 'none';
+    });
 
-  // Clicking outside the modal to close it
-  elements.filterDiv.addEventListener('click', () => {
-    toggleModal(false);
-    elements.filterDiv.style.display = 'none'; // Also hide the filter overlay
-  });
+    elements.filterDiv.addEventListener('click', () => {
+        toggleModal(false, elements.newTaskModalWindow);
+        elements.filterDiv.style.display = 'none';
+    });
 
-  // Show sidebar event listener
-  elements.hideSideBarBtn.click() => toggleSidebar(false));
-  elements.showSideBarBtn.click() => toggleSidebar(true));
+    elements.hideSideBarBtn.addEventListener('click', () => {
+        toggleSidebar(false);
+    });
 
-  // Theme switch event listener
-  elements.themeSwitch.addEventListener('change', toggleTheme);
+    elements.showSideBarBtn.addEventListener('click', () => {
+        toggleSidebar(true);
+    });
 
-  // Show Add New Task Modal event listener
-  elements.createNewTaskBtn.addEventListener('click', () => {
-    toggleModal(true);
-    elements.filterDiv.style.display = 'block'; // Also show the filter overlay
-  });
+    elements.createNewTaskBtn.addEventListener('click', () => {
+        toggleModal(true, elements.newTaskModalWindow);
+        elements.filterDiv.style.display = 'block';
+    });
 
-  // Add new task form submission event listener
-  elements.modalWindow.addEventListener('submit',  (event) => {
-    addTask(event)
-  });
+    elements.newTaskModalWindow.addEventListener('submit', (event) => {
+        event.preventDefault();
+        addTask(event);
+    });
+
+    elements.saveTaskChangesBtn.addEventListener('click', () => {
+        const taskId = parseInt(elements.editTaskTitleInput.getAttribute('data-task-id'), 10);
+        saveTaskChanges(taskId);
+    });
+
+    elements.deleteTaskBtn.addEventListener('click', () => {
+        const taskId = parseInt(elements.editTaskTitleInput.getAttribute('data-task-id'), 10);
+        deleteTask(taskId);
+        toggleModal(false, elements.editTaskModalWindow);
+        refreshTasksUI();
+    });
+
+    console.log('Event listeners set up successfully.');
 }
 
-// Toggles tasks modal
-// Task: Fix bugs
-function toggleModal(show, modal = elements.modalWindow) {
-  modal.style.display = show ? 'block' => 'none'; 
+function toggleModal(show, modal = elements.newTaskModalWindow) {
+    modal.style.display = show ? 'block' : 'none';
+    console.log(`Modal ${show ? 'opened' : 'closed'}`);
 }
-
-/*************************************************************************************************************************************************
- * COMPLETE FUNCTION CODE
- * **********************************************************************************************************************************************/
 
 function addTask(event) {
-  event.preventDefault(); 
+    event.preventDefault();
 
-  //Assign user input to the task object
     const task = {
-      
+        id: Date.now(),
+        title: elements.modalTitleInput.value,
+        description: elements.modalDescInput.value,
+        status: elements.selectStatus.value,
+        board: activeBoard
     };
     const newTask = createNewTask(task);
     if (newTask) {
-      addTaskToUI(newTask);
-      toggleModal(false);
-      elements.filterDiv.style.display = 'none'; // Also hide the filter overlay
-      event.target.reset();
-      refreshTasksUI();
+        addTaskToUI(newTask);
+        toggleModal(false, elements.newTaskModalWindow);
+        elements.filterDiv.style.display = 'none';
+        event.target.reset();
+        refreshTasksUI();
     }
 }
 
-
 function toggleSidebar(show) {
- 
+    elements.sideBarDiv.style.display = show ? 'block' : 'none';
+    console.log(`Sidebar ${show ? 'shown' : 'hidden'}`);
 }
 
 function toggleTheme() {
- 
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
 
+  const showSideBar = localStorage.getItem('showSideBar') === 'true';
+  toggleSidebar(showSideBar);
+});
 
 function openEditTaskModal(task) {
-  // Set task details in modal inputs
-  
-
-  // Get button elements from the task modal
-
-
-  // Call saveTaskChanges upon click of Save Changes button
- 
-
-  // Delete task using a helper function and close the task modal
-
-
-  toggleModal(true, elements.editTaskModal); // Show the edit task modal
+    elements.editTaskTitleInput.value = task.title;
+    elements.editTaskDescInput.value = task.description;
+    elements.editTaskTitleInput.setAttribute('data-task-id', task.id);
+    elements.editSelectStatus.value = task.status;
+    toggleModal(true, elements.editTaskModalWindow);
+    console.log(`Opened edit task modal for task ID: ${task.id}`);
 }
 
 function saveTaskChanges(taskId) {
-  // Get new user inputs
-  
-
-  // Create an object with the updated task details
-
-
-  // Update task using a hlper functoin
- 
-
-  // Close the modal and refresh the UI to reflect the changes
-
-  refreshTasksUI();
+    const updatedTask = {
+        id: taskId,
+        title: elements.editTaskTitleInput.value,
+        description: elements.editTaskDescInput.value,
+        status: elements.editSelectStatus.value,
+        board: activeBoard
+    };
+    patchTask(taskId, updatedTask);
+    toggleModal(false, elements.editTaskModalWindow);
+    refreshTasksUI();
+    console.log(`Saved changes for task ID: ${taskId}`);
 }
 
-/*************************************************************************************************************************************************/
-
-document.addEventListener('DOMContentLoaded', function() {
-  init(); // init is called after the DOM is fully loaded
-});
-
-function init() {
-  setupEventListeners();
-  const showSidebar = localStorage.getItem('showSideBar') === 'true';
-  toggleSidebar(showSidebar);
-  const isLightTheme = localStorage.getItem('light-theme') === 'enabled';
-  document.body.classList.toggle('light-theme', isLightTheme);
-  fetchAndDisplayBoardsAndTasks(); // Initial display of boards and tasks
-}
+// Initialize data and setup event listeners
+initializeData();
+setupEventListeners();
+filterAndDisplayTasksByBoard(activeBoard);
+styleActiveBoard(activeBoard);
