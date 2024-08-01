@@ -136,12 +136,9 @@ function filterAndDisplayTasksByBoard(boardName) {
       taskElement.setAttribute('data-task-id', task.id);
 
       // Add click event listener to open edit modal
-      taskElement.addEventListener("click", () => openEditTaskModal(task));
-
-      // Add right-click event listener for context menu
-      taskElement.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        showContextMenu(e, task);
+      taskElement.addEventListener("click", () => {
+        console.log('Task clicked:', task); // Debug log
+        openEditTaskModal(task);
       });
 
       tasksContainer.appendChild(taskElement);
@@ -151,6 +148,7 @@ function filterAndDisplayTasksByBoard(boardName) {
 
 
 function refreshTasksUI() {
+  const tasks = getTasks(); // Fetch the latest tasks from storage
   filterAndDisplayTasksByBoard(activeBoard);
 }
 
@@ -186,13 +184,12 @@ function addTaskToUI(task) {
 
   const taskElement = document.createElement('div');
   taskElement.className = 'task-div';
-  taskElement.textContent = task.title; // Modify as needed
+  taskElement.textContent = task.title;
   taskElement.setAttribute('data-task-id', task.id);
   
   tasksContainer.appendChild(taskElement); 
 }
 
-//next bug fix when log back
 
 function setupEventListeners() {
   // Cancel editing task event listener
@@ -225,16 +222,29 @@ function setupEventListeners() {
 
   // Add new task form submission event listener
   elements.newTaskModalWindow.addEventListener('submit', (event) => {
-    addTask(event);
+    event.preventDefault();
+    if (elements.createTaskBtn.textContent === 'Create Task') {
+      addTask(event);
+    }
+    // The save changes functionality is now handled in the openEditTaskModal function
+  });
+
+  // Cancel adding/editing task event listener
+  elements.cancelAddTaskBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    toggleModal(false, elements.newTaskModalWindow);
+    resetNewTaskModal();
   });
 }
 
 // Toggles tasks modal
 // Task: Fix bugs
 function toggleModal(show, modal) {
+  console.log('toggleModal called with:', show, modal); // Debug log
   if (modal) {
     modal.style.display = show ? 'block' : 'none';
     elements.filterDiv.style.display = show ? 'block' : 'none';
+    console.log('Modal display set to:', modal.style.display); // Debug log
   } else {
     console.error('Modal element not provided to toggleModal function');
   }
@@ -298,52 +308,80 @@ function toggleTheme() {
 
 // Update the openEditTaskModal function
 function openEditTaskModal(task) {
-  if (!elements.editTaskModal) {
-    console.error('Edit task modal not found in the DOM');
+  console.log('openEditTaskModal called with task:', task);
+
+  if (!elements.newTaskModalWindow) {
+    console.error('New task modal window not found in the DOM');
     return;
   }
 
-  elements.editTaskTitleInput.value = task.title;
-  elements.editTaskDescInput.value = task.description;
-  elements.editSelectStatus.value = task.status;
+  // Populate the modal with task data
+  elements.titleInput.value = task.title;
+  elements.descInput.value = task.description || '';
+  elements.selectStatus.value = task.status;
 
-  elements.saveTaskChangesBtn.onclick = () => saveTaskChanges(task.id);
-
-  elements.deleteTaskBtn.onclick = () => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      deleteTask(task.id);
-      toggleModal(false, elements.editTaskModal);
-      refreshTasksUI();
-    }
+  // Change the submit button text and functionality
+  elements.createTaskBtn.textContent = 'Save Changes';
+  elements.createTaskBtn.onclick = (event) => {
+    event.preventDefault();
+    saveTaskChanges(task.id);
   };
 
-  toggleModal(true, elements.editTaskModal);
+  // Ensure the "Cancel" button is present and functioning
+  const cancelBtn = elements.newTaskModalWindow.querySelector('#cancel-add-task-btn');
+  if (cancelBtn) {
+    cancelBtn.onclick = (event) => {
+      event.preventDefault();
+      toggleModal(false, elements.newTaskModalWindow);
+      resetNewTaskModal();
+    };
+  } else {
+    console.error('Cancel button not found');
+  }
+
+  // Show the modal
+  toggleModal(true, elements.newTaskModalWindow);
 }
 
+// Add this new function to save task changes
 function saveTaskChanges(taskId) {
-  const newTitle = elements.editTaskTitleInput.value.trim();
-  const newDescription = elements.editTaskDescInput.value.trim();
-  const newStatus = elements.editSelectStatus.value;
-
   const updatedTask = {
-    id: taskId,
-    title: newTitle,
-    description: newDescription,
-    status: newStatus,
+    title: elements.titleInput.value.trim(),
+    description: elements.descInput.value.trim(),
+    status: elements.selectStatus.value,
     board: activeBoard
   };
 
-  const success = patchTask(taskId, {
-    title: newTitle,
-    description: newDescription,
-    status: newStatus
-  });
+  const success = patchTask(taskId, updatedTask);
 
   if (success) {
-    toggleModal(false, elements.editTaskModal);
+    toggleModal(false, elements.newTaskModalWindow);
     refreshTasksUI();
   } else {
     alert('Failed to update task. Please try again.');
+  }
+}
+
+// Update the resetNewTaskModal function to restore the original button layout
+function resetNewTaskModal() {
+  elements.titleInput.value = '';
+  elements.descInput.value = '';
+  elements.selectStatus.value = 'todo'; // Set to default value
+  
+  // Reset the "Create Task" button
+  elements.createTaskBtn.textContent = 'Create Task';
+  elements.createTaskBtn.onclick = addTask;
+
+  // Ensure the "Add New Task" title is present
+  const modalTitle = elements.newTaskModalWindow.querySelector('h2');
+  if (modalTitle) {
+    modalTitle.textContent = 'Add New Task';
+  }
+
+  // Ensure the "Title" label is visible
+  const titleLabel = elements.newTaskModalWindow.querySelector('label[for="title-input"]');
+  if (titleLabel) {
+    titleLabel.style.display = '';
   }
 }
 
@@ -429,14 +467,14 @@ function showMoveOptions(task) {
 document.addEventListener('DOMContentLoaded', function() {
   try {
     initializeData(); // Ensure initial data is set up
-    init(); // Call init after data is initialized
+    setupEventListeners(); // Make sure this is called
+    init();
   } catch (error) {
     console.error('Initialization error:', error);
   }
 });
 
 function init() {
-  setupEventListeners();
   const showSidebar = localStorage.getItem('showSideBar') === 'true';
   toggleSidebar(showSidebar);
   const isLightTheme = localStorage.getItem('light-theme') === 'enabled';
