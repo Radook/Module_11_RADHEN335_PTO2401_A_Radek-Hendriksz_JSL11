@@ -4,9 +4,6 @@ import { getTasks, createNewTask, patchTask, putTask, deleteTask } from './utils
 // TASK: import initialData
 import { initialData } from "./initialData.js";
 
-/*****************************************************************************************************************************************************************************************************************************************************************
- * FIX BUGS!!!
- * **********************************************************************************************************************************************************************************************************************************************/
 
 // Function checks if local storage already has data, if not it loads initialData to localStorage
 function initializeData() {
@@ -526,6 +523,12 @@ function init() {
   elements.switch.checked = isLightTheme;
   elements.iconDark.style.opacity = isLightTheme ? '0.5' : '1';
   elements.iconLight.style.opacity = isLightTheme ? '1' : '0.5';
+  
+  // Set the correct logo on init
+  const logo = document.getElementById('logo');
+  if (logo) {
+    logo.src = isLightTheme ? './assets/logo-light.svg' : './assets/logo-dark.svg';
+  }
   
   fetchAndDisplayBoardsAndTasks();
 }
