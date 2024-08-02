@@ -214,78 +214,35 @@ function toggleModal(show, modal = elements.modalWindow) {
 
 // Opens the modal for creating a new task
 function openNewTaskModal() {
-  // Show and set labels for title and description inputs
-  elements.titleInput.previousElementSibling.style.display = 'block';
-  elements.titleInput.previousElementSibling.textContent = 'Title';
-  elements.descInput.previousElementSibling.style.display = 'block';
-  elements.descInput.previousElementSibling.textContent = 'Description';
-
-  // Set white background for title input for better visibility
-  elements.titleInput.style.backgroundColor = 'white';
-  elements.titleInput.style.color = 'black';
-
-  // Reset description input styling
-  elements.descInput.style.backgroundColor = '';
-  elements.descInput.style.color = '';
-
+  setInputLabels(true);
+  setInputStyles();
   setupNewTaskModal();
   toggleModal(true, elements.newTaskModalWindow);
 }
 
 // Resets the new task modal to its default state
 function resetNewTaskModal() {
-  // Clear input fields
-  elements.titleInput.value = '';
-  elements.descInput.value = '';
-  elements.selectStatus.value = 'todo';
-  
-  // Reset button container
-  const buttonContainer = elements.newTaskModalWindow.querySelector('form > div:last-child');
-  buttonContainer.innerHTML = '';
-  buttonContainer.appendChild(elements.createTaskBtn);
-  buttonContainer.appendChild(elements.cancelAddTaskBtn);
-
-  // Reset button text and event handlers
-  elements.createTaskBtn.textContent = 'Create Task';
-  elements.createTaskBtn.onclick = null;
-  elements.cancelAddTaskBtn.textContent = 'Cancel';
-
-  // Show labels for inputs
-  elements.titleInput.previousElementSibling.style.display = 'block';
-  elements.descInput.previousElementSibling.style.display = 'block';
+  resetInputs();
+  resetButtons();
+  setInputLabels(true);
 }
 
 // Handles the creation of a new task
 function addTask(event) {
-  event.preventDefault(); 
-
-  // Create task object from user input
-  const task = {
-    title: elements.titleInput.value.trim(),
-    description: elements.descInput.value.trim(),
-    status: elements.selectStatus.value,
-    board: activeBoard
-  };
-
-  // Create new task and update UI if successful
+  event.preventDefault();
+  const task = createTaskObject();
   const newTask = createNewTask(task);
   if (newTask) {
     addTaskToUI(newTask);
-    toggleModal(false, elements.newTaskModalWindow);
-    elements.filterDiv.style.display = 'none';
-    event.target.reset();
-    refreshTasksUI();
+    closeModalAndRefresh(event.target);
   }
 }
 
 // Sets up the new task modal
 function setupNewTaskModal() {
-  elements.createTaskBtn.textContent = 'Create Task';
-  elements.createTaskBtn.style.backgroundColor = '#219C90';
-  elements.cancelAddTaskBtn.textContent = 'Cancel';
-  
-  // Change cancel button color for "Add Task" modal
-  if (elements.newTaskModalWindow.querySelector('.modal-title').textContent === 'Add New Task') {
+  setButtonStyles('Create Task', '#219C90', 'Cancel');
+  const modalTitle = elements.newTaskModalWindow.querySelector('.modal-title');
+  if (modalTitle && modalTitle.textContent === 'Add New Task') {
     elements.cancelAddTaskBtn.style.backgroundColor = '#ea5555';
   }
 }
@@ -297,130 +254,32 @@ function toggleSidebar(show) {
   elements.layout.classList.toggle('no-sidebar', !show);
   localStorage.setItem('showSideBar', show);
 
-  if (show) {
-    // Apply flexbox layout for sidebar
-    elements.sideBar.style.flexDirection = 'column';
-    elements.sideBar.style.height = '100vh';
-    elements.boardsNavLinks.style.flexGrow = '1';
-    elements.boardsNavLinks.style.overflowY = 'auto';
-    
-    // Push side-bar-bottom to the bottom
-    const sideBarBottom = elements.sideBar.querySelector('.side-bar-bottom');
-    if (sideBarBottom) {
-      sideBarBottom.style.marginTop = 'auto';
-    }
-  }
+  if (show) applySidebarStyles();
 }
 
 // Toggles between light and dark themes
 function toggleTheme() {
   const isLightTheme = elements.body.classList.toggle('light-theme');
-  
-  // Update UI elements for theme change
-  elements.switch.checked = isLightTheme;
-  elements.iconDark.style.opacity = isLightTheme ? '0.5' : '1';
-  elements.iconLight.style.opacity = isLightTheme ? '1' : '0.5';
-  
-  // Change logo based on theme
-  const logo = document.getElementById('logo');
-  if (logo) {
-    logo.src = isLightTheme ? './assets/logo-light.svg' : './assets/logo-dark.svg';
-  }
-  
+  updateThemeElements(isLightTheme);
+  updateLogo(isLightTheme);
   localStorage.setItem('light-theme', isLightTheme ? 'enabled' : 'disabled');
 }
 
 // Opens the modal for editing an existing task
 function openEditTaskModal(task) {
-  // Set task details in modal inputs
-  elements.titleInput.value = task.title;
-  elements.descInput.value = task.description || '';
-  elements.selectStatus.value = task.status;
-
-  // Adjust input styling for edit mode
-  elements.titleInput.previousElementSibling.style.display = 'none';
-  elements.descInput.previousElementSibling.style.display = 'none';
-  elements.selectStatus.previousElementSibling.style.display = 'block';
-  elements.titleInput.style.marginBottom = '20px';
-  elements.descInput.style.marginTop = '20px';
-  elements.descInput.style.backgroundColor = 'white';
-  elements.descInput.style.color = 'black';
-  elements.titleInput.style.backgroundColor = '';
-  elements.titleInput.style.color = '';
-
-  // Set up buttons for edit mode
-  const saveButton = elements.createTaskBtn;
-  const deleteButton = document.createElement('button');
-  const cancelButton = elements.cancelAddTaskBtn;
-
-  saveButton.textContent = 'Save Changes';
-  saveButton.id = 'save-task-changes-btn';
-  saveButton.className = 'submit-btn';
-
-  deleteButton.textContent = 'Delete Task';
-  deleteButton.id = 'delete-task-btn';
-  deleteButton.className = 'submit-btn';
-
-  cancelButton.textContent = 'Cancel';
-  cancelButton.id = 'cancel-edit-btn';
-  cancelButton.className = 'submit-btn';
-  cancelButton.style.backgroundColor = '';
-
-  // Set up button container
-  const buttonContainer = elements.newTaskModalWindow.querySelector('.edit-task-div.button-group') || 
-                          document.createElement('div');
-  buttonContainer.className = 'edit-task-div button-group';
-  buttonContainer.innerHTML = '';
-  buttonContainer.appendChild(saveButton);
-  buttonContainer.appendChild(cancelButton);
-  buttonContainer.appendChild(deleteButton);
-
-  if (!elements.newTaskModalWindow.contains(buttonContainer)) {
-    elements.newTaskModalWindow.appendChild(buttonContainer);
-  }
-
-  // Set up event listeners for buttons
-  saveButton.onclick = (event) => {
-    event.preventDefault();
-    saveTaskChanges(task.id);
-  };
-
-  deleteButton.onclick = (event) => {
-    event.preventDefault();
-    if (confirm('Are you sure you want to delete this task?')) {
-      deleteTask(task.id);
-      toggleModal(false, elements.newTaskModalWindow);
-      refreshTasksUI();
-    }
-  };
-
-  cancelButton.onclick = (event) => {
-    event.preventDefault();
-    toggleModal(false, elements.newTaskModalWindow);
-  };
-
-  // Hide modal title and adjust modal width
-  const modalTitle = elements.newTaskModalWindow.querySelector('.modal-title');
-  if (modalTitle) modalTitle.style.display = 'none';
-  elements.newTaskModalWindow.style.width = '700px';
-
+  setTaskDetails(task);
+  adjustEditModeStyles();
+  setupEditButtons(task);
+  hideModalTitle();
   toggleModal(true, elements.newTaskModalWindow);
 }
 
 // Saves changes made to an existing task
 function saveTaskChanges(taskId) {
-  const updatedTask = {
-    title: elements.titleInput.value.trim(),
-    description: elements.descInput.value.trim(),
-    status: elements.selectStatus.value,
-    board: activeBoard
-  };
-
+  const updatedTask = createTaskObject();
   const success = patchTask(taskId, updatedTask);
-
   if (success) {
-    toggleModal(false, elements.newTaskModalWindow);
-    refreshTasksUI();
+    closeModalAndRefresh();
   } else {
     alert('Failed to update task. Please try again.');
   }
@@ -440,51 +299,195 @@ function updateEntireTask(taskId, updatedTask) {
 // Displays a context menu for a task
 function showContextMenu(event, task) {
   event.preventDefault();
-  const contextMenu = document.createElement('div');
-  contextMenu.classList.add('context-menu');
-  
-  // Create menu options
-  const editOption = document.createElement('div');
-  editOption.textContent = 'Edit';
-  editOption.onclick = () => openEditTaskModal(task);
-
-  const deleteOption = document.createElement('div');
-  deleteOption.textContent = 'Delete';
-  deleteOption.onclick = () => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      deleteTask(task.id);
-      refreshTasksUI();
-    }
-  };
-  
-  const moveOption = document.createElement('div');
-  moveOption.textContent = 'Move to...';
-  moveOption.onclick = () => showMoveOptions(task);
-
-  // Add options to context menu
-  contextMenu.appendChild(editOption);
-  contextMenu.appendChild(deleteOption);
-  contextMenu.appendChild(moveOption);
-
-  // Position and display context menu
-  document.body.appendChild(contextMenu);
-  contextMenu.style.top = `${event.clientY}px`;
-  contextMenu.style.left = `${event.clientX}px`;
-
-  // Remove context menu on click outside
-  document.addEventListener('click', function removeMenu() {
-    contextMenu.remove();
-    document.removeEventListener('click', removeMenu);
-  });
+  const contextMenu = createContextMenu(task);
+  positionContextMenu(contextMenu, event);
+  addClickOutsideListener(contextMenu);
 }
 
 // Shows options for moving a task to a different status
 function showMoveOptions(task) {
+  const moveModal = createMoveModal(task);
+  document.body.appendChild(moveModal);
+  addClickOutsideListener(moveModal);
+}
+
+// Helper functions
+function setInputLabels(show) {
+  elements.titleInput.previousElementSibling.style.display = show ? 'block' : 'none';
+  elements.descInput.previousElementSibling.style.display = show ? 'block' : 'none';
+  if (show) {
+    elements.titleInput.previousElementSibling.textContent = 'Title';
+    elements.descInput.previousElementSibling.textContent = 'Description';
+  }
+}
+
+function setInputStyles() {
+  elements.titleInput.style.backgroundColor = 'white';
+  elements.titleInput.style.color = 'black';
+  elements.descInput.style.backgroundColor = '';
+  elements.descInput.style.color = '';
+}
+
+function resetInputs() {
+  elements.titleInput.value = '';
+  elements.descInput.value = '';
+  elements.selectStatus.value = 'todo';
+}
+
+function resetButtons() {
+  const buttonContainer = elements.newTaskModalWindow.querySelector('form > div:last-child');
+  buttonContainer.innerHTML = '';
+  buttonContainer.appendChild(elements.createTaskBtn);
+  buttonContainer.appendChild(elements.cancelAddTaskBtn);
+  elements.createTaskBtn.textContent = 'Create Task';
+  elements.createTaskBtn.onclick = null;
+  elements.cancelAddTaskBtn.textContent = 'Cancel';
+}
+
+function createTaskObject() {
+  return {
+    title: elements.titleInput.value.trim(),
+    description: elements.descInput.value.trim(),
+    status: elements.selectStatus.value,
+    board: activeBoard
+  };
+}
+
+function closeModalAndRefresh(form) {
+  toggleModal(false, elements.newTaskModalWindow);
+  elements.filterDiv.style.display = 'none';
+  if (form) form.reset();
+  refreshTasksUI();
+}
+
+function setButtonStyles(createText, createColor, cancelText) {
+  elements.createTaskBtn.textContent = createText;
+  elements.createTaskBtn.style.backgroundColor = createColor;
+  elements.cancelAddTaskBtn.textContent = cancelText;
+}
+
+function applySidebarStyles() {
+  elements.sideBar.style.flexDirection = 'column';
+  elements.sideBar.style.height = '100vh';
+  elements.boardsNavLinks.style.flexGrow = '1';
+  elements.boardsNavLinks.style.overflowY = 'auto';
+  const sideBarBottom = elements.sideBar.querySelector('.side-bar-bottom');
+  if (sideBarBottom) sideBarBottom.style.marginTop = 'auto';
+}
+
+function updateThemeElements(isLightTheme) {
+  elements.switch.checked = isLightTheme;
+  elements.iconDark.style.opacity = isLightTheme ? '0.5' : '1';
+  elements.iconLight.style.opacity = isLightTheme ? '1' : '0.5';
+}
+
+function updateLogo(isLightTheme) {
+  const logo = document.getElementById('logo');
+  if (logo) {
+    logo.src = isLightTheme ? './assets/logo-light.svg' : './assets/logo-dark.svg';
+  }
+}
+
+function setTaskDetails(task) {
+  elements.titleInput.value = task.title;
+  elements.descInput.value = task.description || '';
+  elements.selectStatus.value = task.status;
+}
+
+function adjustEditModeStyles() {
+  setInputLabels(false);
+  elements.selectStatus.previousElementSibling.style.display = 'block';
+  elements.titleInput.style.marginBottom = '20px';
+  elements.descInput.style.marginTop = '20px';
+  elements.descInput.style.backgroundColor = 'white';
+  elements.descInput.style.color = 'black';
+  elements.titleInput.style.backgroundColor = '';
+  elements.titleInput.style.color = '';
+}
+
+function setupEditButtons(task) {
+  const buttonContainer = elements.newTaskModalWindow.querySelector('.edit-task-div.button-group') || 
+                          document.createElement('div');
+  buttonContainer.className = 'edit-task-div button-group';
+  buttonContainer.innerHTML = '';
+
+  const buttons = [
+    { text: 'Save Changes', id: 'save-task-changes-btn', onClick: (e) => { e.preventDefault(); saveTaskChanges(task.id); } },
+    { text: 'Cancel', id: 'cancel-edit-btn', onClick: (e) => { e.preventDefault(); toggleModal(false, elements.newTaskModalWindow); } },
+    { text: 'Delete Task', id: 'delete-task-btn', onClick: (e) => { 
+      e.preventDefault();
+      if (confirm('Are you sure you want to delete this task?')) {
+        deleteTask(task.id);
+        toggleModal(false, elements.newTaskModalWindow);
+        refreshTasksUI();
+      }
+    }}
+  ];
+
+  buttons.forEach(btn => {
+    const button = btn === buttons[0] ? elements.createTaskBtn : 
+                   (btn === buttons[1] ? elements.cancelAddTaskBtn : 
+                   document.createElement('button'));
+    button.textContent = btn.text;
+    button.id = btn.id;
+    button.className = 'submit-btn';
+    button.onclick = btn.onClick;
+    
+    // Ensure the cancel button stays yellow in edit mode
+    if (btn === buttons[1]) {
+      button.style.backgroundColor = '#FFA500'; // or whatever yellow color you prefer
+    }
+    
+    buttonContainer.appendChild(button);
+  });
+
+  if (!elements.newTaskModalWindow.contains(buttonContainer)) {
+    elements.newTaskModalWindow.appendChild(buttonContainer);
+  }
+}
+
+function hideModalTitle() {
+  const modalTitle = elements.newTaskModalWindow.querySelector('.modal-title');
+  if (modalTitle) modalTitle.style.display = 'none';
+  elements.newTaskModalWindow.style.width = '700px';
+}
+
+function createContextMenu(task) {
+  const contextMenu = document.createElement('div');
+  contextMenu.classList.add('context-menu');
+  
+  const options = [
+    { text: 'Edit', onClick: () => openEditTaskModal(task) },
+    { text: 'Delete', onClick: () => {
+      if (confirm('Are you sure you want to delete this task?')) {
+        deleteTask(task.id);
+        refreshTasksUI();
+      }
+    }},
+    { text: 'Move to...', onClick: () => showMoveOptions(task) }
+  ];
+
+  options.forEach(option => {
+    const optionElement = document.createElement('div');
+    optionElement.textContent = option.text;
+    optionElement.onclick = option.onClick;
+    contextMenu.appendChild(optionElement);
+  });
+
+  return contextMenu;
+}
+
+function positionContextMenu(contextMenu, event) {
+  document.body.appendChild(contextMenu);
+  contextMenu.style.top = `${event.clientY}px`;
+  contextMenu.style.left = `${event.clientX}px`;
+}
+
+function createMoveModal(task) {
   const moveModal = document.createElement('div');
   moveModal.classList.add('move-modal');
 
-  const statusOptions = ['todo', 'doing', 'done'];
-  statusOptions.forEach(status => {
+  ['todo', 'doing', 'done'].forEach(status => {
     if (status !== task.status) {
       const option = document.createElement('button');
       option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
@@ -497,13 +500,14 @@ function showMoveOptions(task) {
     }
   });
 
-  document.body.appendChild(moveModal);
+  return moveModal;
+}
 
-  // Remove move options modal on click outside
-  document.addEventListener('click', function removeModal(e) {
-    if (!moveModal.contains(e.target)) {
-      moveModal.remove();
-      document.removeEventListener('click', removeModal);
+function addClickOutsideListener(element) {
+  document.addEventListener('click', function removeElement(e) {
+    if (!element.contains(e.target)) {
+      element.remove();
+      document.removeEventListener('click', removeElement);
     }
   });
 }
